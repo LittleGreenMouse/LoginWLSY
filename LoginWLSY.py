@@ -25,77 +25,83 @@ def main():
 
     # 建立会话
     session = requests.session()
-    session.post(url, fromData)
-    # 抓取课表成绩页面
-    response = session.get('http://wlsy.xidian.edu.cn/PhyEws/student/select.aspx')
-    html = (response.text)
+    response = session.post(url, fromData)
+    
+    # 判断登录状态
+    soup = BeautifulSoup(response.text,'html.parser')
+    if soup.title.string == '物理实验网络选课系统':
 
-    # 写入index.html
-    # fp = open('index.html','w',encoding='utf-8')
-    # fp.write(html)
-    # fp.close()
+        # 获取学生姓名
+        name = soup.find_all('span', id='Stu')[0].string.split('（')[0]
+        
+        # 抓取课表成绩页面
+        response = session.get('http://wlsy.xidian.edu.cn/PhyEws/student/select.aspx')
 
-    # 解析html页面获取课表成绩信息
-    soup = BeautifulSoup(html,'html.parser')
-    table = str(soup.select("table#Table1"))
-    soup = BeautifulSoup(table,'html.parser')
-    tbody = str(soup.select("form#Form1"))
-    soup = BeautifulSoup(tbody, 'html.parser')
-    table2 = str(soup.select("table#Orders_ctl00"))
-    soup = BeautifulSoup(table2, 'html.parser')
-    th = soup.select("th.tableHeaderText")
-    td = soup.select("td.forumRow")
+        # 写入index.html
+        # fp = open('index.html','w',encoding='utf-8')
+        # fp.write(response.text)
+        # fp.close()
 
-    head = []
-    body = []
-    downState = []
-    down = ['http://wlsy.xidian.edu.cn/pec/wenjian.asp?id=69',downState]
+        # 解析html页面
+        soup = BeautifulSoup(response.text,'html.parser')
 
-    for i in th:
-        head.append(i.get_text())
-    head[len(head)-1] = '页码'
+        # 获取表头
+        th = soup.find_all('th', class_='tableHeaderText')
+        head=[]
+        for item in th:
+            head.append(item.string)
+        
+        # 获取表格内容
+        td = soup.find_all('td', class_='forumRow')
+        body = []
+        for item in td:
+            body.append(item.string)
+        body = [body[i:i+10] for i in range(0, len(body), 10)]
 
-    temp = []
-    n = 0
-    for j in td:
-        n = n + 1
-        temp.append(j.get_text())
-        if(n == 7):
-            if(j.get_text() == '下载'):
-                downState.append(True)
-            else :
-                downState.append(False)
-        if(n == 10):
-            n = 0
-            body.append(temp)
-            temp = []
-
-    ''' 
-    最终结果：
-    head    表头
-    body    选课及成绩
-    down[0] 新开实验讲义下载地址
-    down[1] 是否为新开实验
-    '''
-    print(head)
-    for i in body:
-        print(i)
-    print(down[0])
-    print(down[1])
-
-    # 结果写入result.csv  open()中的编码方式请与本机默认编码保持一致
-    fp = open('result.csv','w',encoding='gbk')
-    for i in head:
-        fp.write(i)
-        fp.write(',')
-    fp.write('\n')
-
-    for i in body:
-        for j in i:
-            fp.write(j)
+        # 判断是否需要下载课件
+        downStatus = []
+        for item in body:
+            if item[6] == '下载':
+                downStatus.append(True)
+            else:
+                downStatus.append(False)
+        
+        # 获取下载链接
+        a = soup.find_all('a', class_='linkSmallBold')[1::2]
+        downUrl = []
+        for i in range(len(a)):
+            if downStatus[i]:
+                downUrl.append(a[i]['href'])
+            else:
+                downUrl.append(None)
+        
+        # 结果写入result.csv  open()中的编码方式请与本机默认编码保持一致
+        fp = open('result.csv','w',encoding='gbk')
+        for item in head:
+            fp.write(item)
             fp.write(',')
         fp.write('\n')
+        
+        for i in body:
+            for j in i:
+                fp.write(str(j))
+                fp.write(',')
+            fp.write('\n')
+        fp.close()
+        
+        return {
+            'head': head,
+            'body': body,
+            'downStatus': downStatus,
+            'downUrl': downUrl,
+        }
 
+    # 登录失败
+    else:
+        return {
+            'result': 'failed',
+            'reason': '登录失败，请检查学号或密码是否正确'
+        }
 
 if __name__ == '__main__':
-    main()
+    print(main())

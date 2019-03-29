@@ -6,7 +6,7 @@
 
 ### 如何使用？
 ***
-1. 下载LoginWLSY.py到本地
+0. 下载LoginWLSY.py到本地
 1. 打开cmd切换到LoginWLSY.py所在目录
 2. 输入python LoginWLSY.py运行脚本
 3. 根据提示输入学号和物理实验网站的密码
